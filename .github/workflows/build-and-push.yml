@@ -1,12 +1,7 @@
 # .github/workflows/docker-alpine.yml
 #
-# Builds and publishes two Horust image variants to GHCR on version tags,
-# alongside the existing Debian image. The existing ci.yml is unchanged.
-#
-# Variants:
-#   alpine  – musl build, Alpine runtime base, dynamically linked against musl
-#   static  – musl build with +crt-static, distroless/static runtime base,
-#             no external library dependencies (suitable for scratch-like envs)
+# Builds and publishes Alpine and static Horust image variants to GHCR.
+# The existing ci.yml is left completely unchanged.
 #
 # Published tags:
 #   ghcr.io/federicoponzi/horust:v0.2.0-alpine
@@ -14,7 +9,7 @@
 #   ghcr.io/federicoponzi/horust:v0.2.0-static
 #   ghcr.io/federicoponzi/horust:latest-static
 
-name: Docker Build and Push
+name: Docker Alpine
 
 on:
   push:
@@ -22,8 +17,8 @@ on:
       - 'v*.*.*'
 
 jobs:
-  docker:
-    name: Build and push ${{ matrix.variant }} image
+  build:
+    name: Build ${{ matrix.variant }} (${{ matrix.arch }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -33,7 +28,29 @@ jobs:
       matrix:
         include:
           - variant: alpine
+            arch: amd64
+            dockerfile: dockerfiles/Dockerfile.x86
+            platform: linux/amd64
+            rustflags: ''
+            base: alpine:3.21
+          - variant: alpine
+            arch: arm64
+            dockerfile: dockerfiles/Dockerfile.arm
+            platform: linux/arm64
+            rustflags: ''
+            base: alpine:3.21
           - variant: static
+            arch: amd64
+            dockerfile: dockerfiles/Dockerfile.x86
+            platform: linux/amd64
+            rustflags: '-C target-feature=+crt-static'
+            base: gcr.io/distroless/static:latest
+          - variant: static
+            arch: arm64
+            dockerfile: dockerfiles/Dockerfile.arm
+            platform: linux/arm64
+            rustflags: '-C target-feature=+crt-static'
+            base: gcr.io/distroless/static:latest
 
     steps:
       - name: Checkout
@@ -56,11 +73,43 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: dockerfiles/Dockerfile.${{ matrix.variant }}
-          platforms: linux/amd64,linux/arm64
+          file: ${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platform }}
           push: true
-          tags: |
-            ghcr.io/federicoponzi/horust:${{ github.ref_name }}-${{ matrix.variant }}
-            ghcr.io/federicoponzi/horust:latest-${{ matrix.variant }}
-          cache-from: type=registry,ref=ghcr.io/federicoponzi/horust:buildcache-${{ matrix.variant }}
-          cache-to: type=registry,ref=ghcr.io/federicoponzi/horust:buildcache-${{ matrix.variant }},mode=max
+          build-args: |
+            RUSTFLAGS=${{ matrix.rustflags }}
+            BASE=${{ matrix.base }}
+          tags: ghcr.io/federicoponzi/horust:${{ github.ref_name }}-${{ matrix.variant }}-${{ matrix.arch }}
+          cache-from: type=registry,ref=ghcr.io/federicoponzi/horust:buildcache-${{ matrix.variant }}-${{ matrix.arch }}
+          cache-to: type=registry,ref=ghcr.io/federicoponzi/horust:buildcache-${{ matrix.variant }}-${{ matrix.arch }},mode=max
+
+  merge:
+    name: Merge ${{ matrix.variant }} manifest
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        variant: [alpine, static]
+
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create and push multi-arch manifest
+        run: |
+          docker buildx imagetools create \
+            --tag ghcr.io/federicoponzi/horust:${{ github.ref_name }}-${{ matrix.variant }} \
+            --tag ghcr.io/federicoponzi/horust:latest-${{ matrix.variant }} \
+            ghcr.io/federicoponzi/horust:${{ github.ref_name }}-${{ matrix.variant }}-amd64 \
+            ghcr.io/federicoponzi/horust:${{ github.ref_name }}-${{ matrix.variant }}-arm64

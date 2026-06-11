@@ -29,28 +29,28 @@ jobs:
         include:
           - variant: alpine
             arch: amd64
-            dockerfile: Dockerfile.amd64
+            dockerfile: dockerfiles/Dockerfile.x86
             platform: linux/amd64
             runner: ubuntu-latest
             rustflags: ''
             base: alpine:3.21
           - variant: alpine
             arch: arm64
-            dockerfile: Dockerfile.arm64
+            dockerfile: dockerfiles/Dockerfile.arm
             platform: linux/arm64
             runner: ubuntu-24.04-arm
             rustflags: ''
             base: alpine:3.21
           - variant: static
             arch: amd64
-            dockerfile: Dockerfile.amd64
+            dockerfile: dockerfiles/Dockerfile.x86
             platform: linux/amd64
             runner: ubuntu-latest
             rustflags: '-C target-feature=+crt-static'
             base: gcr.io/distroless/static:latest
           - variant: static
             arch: arm64
-            dockerfile: Dockerfile.arm64
+            dockerfile: dockerfiles/Dockerfile.arm
             platform: linux/arm64
             runner: ubuntu-24.04-arm
             rustflags: '-C target-feature=+crt-static'

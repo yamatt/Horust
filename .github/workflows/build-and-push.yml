@@ -4,10 +4,10 @@
 # The existing ci.yml is left completely unchanged.
 #
 # Published tags:
-#   ghcr.io/federicoponzi/horust:v0.2.0-alpine
-#   ghcr.io/federicoponzi/horust:latest-alpine
-#   ghcr.io/federicoponzi/horust:v0.2.0-static
-#   ghcr.io/federicoponzi/horust:latest-static
+#   ghcr.io/yamatt/horust:v0.2.0-alpine
+#   ghcr.io/yamatt/horust:latest-alpine
+#   ghcr.io/yamatt/horust:v0.2.0-static
+#   ghcr.io/yamatt/horust:latest-static
 
 name: Docker Alpine
 
@@ -79,9 +79,9 @@ jobs:
           build-args: |
             RUSTFLAGS=${{ matrix.rustflags }}
             BASE=${{ matrix.base }}
-          tags: ghcr.io/federicoponzi/horust:${{ github.ref_name }}-${{ matrix.variant }}-${{ matrix.arch }}
-          cache-from: type=registry,ref=ghcr.io/federicoponzi/horust:buildcache-${{ matrix.variant }}-${{ matrix.arch }}
-          cache-to: type=registry,ref=ghcr.io/federicoponzi/horust:buildcache-${{ matrix.variant }}-${{ matrix.arch }},mode=max
+          tags: ghcr.io/yamatt/horust:${{ github.ref_name }}-${{ matrix.variant }}-${{ matrix.arch }}
+          cache-from: type=registry,ref=ghcr.io/yamatt/horust:buildcache-${{ matrix.variant }}-${{ matrix.arch }}
+          cache-to: type=registry,ref=ghcr.io/yamatt/horust:buildcache-${{ matrix.variant }}-${{ matrix.arch }},mode=max
 
   merge:
     name: Merge ${{ matrix.variant }} manifest
@@ -109,7 +109,7 @@ jobs:
       - name: Create and push multi-arch manifest
         run: |
           docker buildx imagetools create \
-            --tag ghcr.io/federicoponzi/horust:${{ github.ref_name }}-${{ matrix.variant }} \
-            --tag ghcr.io/federicoponzi/horust:latest-${{ matrix.variant }} \
-            ghcr.io/federicoponzi/horust:${{ github.ref_name }}-${{ matrix.variant }}-amd64 \
-            ghcr.io/federicoponzi/horust:${{ github.ref_name }}-${{ matrix.variant }}-arm64
+            --tag ghcr.io/yamatt/horust:${{ github.ref_name }}-${{ matrix.variant }} \
+            --tag ghcr.io/yamatt/horust:latest-${{ matrix.variant }} \
+            ghcr.io/yamatt/horust:${{ github.ref_name }}-${{ matrix.variant }}-amd64 \
+            ghcr.io/yamatt/horust:${{ github.ref_name }}-${{ matrix.variant }}-arm64

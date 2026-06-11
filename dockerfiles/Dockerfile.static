@@ -18,8 +18,16 @@ RUN apk add --no-cache musl-dev protobuf-dev
 WORKDIR /build
 COPY . .
 
-RUN RUSTFLAGS='-C target-feature=+crt-static' \
-    cargo build --release --target x86_64-unknown-linux-musl
+RUN set -eux; \
+    case "$TARGETARCH" in \
+        amd64) RUST_TARGET="x86_64-unknown-linux-musl" ;; \
+        arm64) RUST_TARGET="aarch64-unknown-linux-musl" ;; \
+        *) echo "Unsupported architecture: $TARGETARCH" && exit 1 ;; \
+    esac; \
+    rustup target add "$RUST_TARGET"; \
+    RUSTFLAGS='-C target-feature=+crt-static' \
+        cargo build --release --target "$RUST_TARGET"; \
+    cp "target/$RUST_TARGET/release/horust" /horust
 
 # ---- runtime ----
 # distroless/static provides CA certificates, timezone data, and the minimal

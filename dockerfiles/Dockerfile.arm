@@ -9,6 +9,7 @@
 #   BASE      – runtime base image, default alpine:3.21
 #               e.g. 'gcr.io/distroless/static:latest' for a static binary
 
+ARG BASE=alpine:3.21
 FROM rust:alpine AS build
 
 ARG RUSTFLAGS=''
@@ -23,7 +24,6 @@ RUN cargo build --release --target aarch64-unknown-linux-musl && \
     cp target/aarch64-unknown-linux-musl/release/horust /horust
 
 # ---- runtime ----
-ARG BASE=alpine:3.21
 FROM ${BASE}
 
 COPY --from=build /horust /sbin/horust

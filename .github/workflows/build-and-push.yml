@@ -1,0 +1,66 @@
+# .github/workflows/docker-alpine.yml
+#
+# Builds and publishes two Horust image variants to GHCR on version tags,
+# alongside the existing Debian image. The existing ci.yml is unchanged.
+#
+# Variants:
+#   alpine  – musl build, Alpine runtime base, dynamically linked against musl
+#   static  – musl build with +crt-static, distroless/static runtime base,
+#             no external library dependencies (suitable for scratch-like envs)
+#
+# Published tags:
+#   ghcr.io/federicoponzi/horust:v0.2.0-alpine
+#   ghcr.io/federicoponzi/horust:latest-alpine
+#   ghcr.io/federicoponzi/horust:v0.2.0-static
+#   ghcr.io/federicoponzi/horust:latest-static
+
+name: Docker Build and Push
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  docker:
+    name: Build and push ${{ matrix.variant }} image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        include:
+          - variant: alpine
+          - variant: static
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: dockerfiles/Dockerfile.${{ matrix.variant }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/federicoponzi/horust:${{ github.ref_name }}-${{ matrix.variant }}
+            ghcr.io/federicoponzi/horust:latest-${{ matrix.variant }}
+          cache-from: type=registry,ref=ghcr.io/federicoponzi/horust:buildcache-${{ matrix.variant }}
+          cache-to: type=registry,ref=ghcr.io/federicoponzi/horust:buildcache-${{ matrix.variant }},mode=max
